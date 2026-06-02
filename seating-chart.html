@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gentlemen's Serenade — Seating Chart</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Georgia', serif;
+    background: #fdf5f5;
+    color: #1a1212;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #efd6d6;
+    color: #1a1212;
+    text-align: center;
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid #e8cccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  header a { display: inline-block; }
+  header img { height: 52px; width: auto; }
+  header p { font-size: 0.75rem; opacity: 0.6; letter-spacing: 2px; font-family: sans-serif; text-transform: uppercase; }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 24px;
+    background: #fff;
+    border-bottom: 1px solid #e8cccc;
+    flex-wrap: wrap;
+  }
+  .toolbar label { font-size: 0.85rem; color: #6b4848; font-family: sans-serif; }
+  #searchInput {
+    padding: 7px 12px;
+    border: 1px solid #e8cccc;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    width: 220px;
+    outline: none;
+  }
+  #searchInput:focus { border-color: #d4aaaa; box-shadow: 0 0 0 2px rgba(212,170,170,0.25); }
+
+  .stats {
+    margin-left: auto;
+    font-family: sans-serif;
+    font-size: 0.82rem;
+    color: #a88888;
+    display: flex;
+    gap: 18px;
+  }
+  .stat { text-align: center; }
+  .stat strong { display: block; font-size: 1.15rem; color: #1a1212; }
+
+  .drag-hint {
+    font-size: 0.78rem;
+    color: #a88888;
+    font-family: sans-serif;
+    padding: 0 24px 8px;
+    background: #fff;
+    border-bottom: 1px solid #f5e4e4;
+  }
+
+  /* Add guest bar */
+  .add-guest-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 24px;
+    background: #fff;
+    border-bottom: 1px solid #f5e4e4;
+    flex-wrap: wrap;
+  }
+  .add-guest-bar label { font-size: 0.85rem; color: #6b4848; font-family: sans-serif; white-space: nowrap; }
+  .add-guest-bar input[type="text"] {
+    padding: 7px 12px;
+    border: 1px solid #e8cccc;
+    border-radius: 20px;
+    font-size: 0.88rem;
+    width: 200px;
+    outline: none;
+    font-family: sans-serif;
+  }
+  .add-guest-bar input[type="text"]:focus { border-color: #d4aaaa; box-shadow: 0 0 0 2px rgba(212,170,170,0.25); }
+  .add-guest-bar select {
+    padding: 7px 10px;
+    border: 1px solid #e8cccc;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    outline: none;
+    background: #fff;
+    color: #1a1212;
+    font-family: sans-serif;
+    cursor: pointer;
+  }
+  .add-guest-bar select:focus { border-color: #d4aaaa; }
+  .add-guest-bar button {
+    padding: 7px 18px;
+    background: #1a1212;
+    color: #fdf5f5;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-family: sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .add-guest-bar button:hover { opacity: 0.8; }
+  .add-guest-bar button.secondary {
+    background: transparent;
+    color: #6b4848;
+    border: 1px solid #e8cccc;
+  }
+  .add-guest-bar button.secondary:hover { background: #f5e4e4; opacity: 1; }
+  .save-indicator {
+    font-size: 0.72rem;
+    color: #a88888;
+    font-family: sans-serif;
+    margin-left: 4px;
+  }
+
+  .room {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 20px;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .table-card {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e8cccc;
+    box-shadow: 0 2px 10px rgba(26,18,18,0.05);
+    transition: box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .table-card.drag-over {
+    border-color: #d4aaaa;
+    box-shadow: 0 0 0 3px rgba(212,170,170,0.25);
+  }
+  .table-card.highlight {
+    border-color: #d4aaaa;
+    background: #fdf5f5;
+  }
+
+  .card-header {
+    padding: 13px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #f5e4e4;
+  }
+  .table-circle {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .card-title { flex: 1; min-width: 0; }
+  .card-title h3 {
+    font-size: 0.95rem; color: #1a1212; margin-bottom: 2px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .table-name-text { cursor: text; }
+  .table-name-input {
+    font-size: 0.95rem; font-family: 'Georgia', serif;
+    color: #1a1212; border: none; border-bottom: 1px solid #d4aaaa;
+    outline: none; background: transparent; width: 100%; padding: 0;
+  }
+  .table-edit-btn {
+    font-size: 0.6rem; opacity: 0; cursor: pointer;
+    flex-shrink: 0; line-height: 1; transition: opacity 0.15s;
+  }
+  .card-header:hover .table-edit-btn { opacity: 0.45; }
+  .card-title .subtitle {
+    font-size: 0.72rem;
+    color: #a88888;
+    font-family: sans-serif;
+    font-style: italic;
+  }
+  .seat-count {
+    font-family: sans-serif;
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 3px 9px;
+    border-radius: 12px;
+    background: #f5e4e4;
+    color: #6b4848;
+  }
+  .seat-count.full { background: #e8f5e9; color: #388e3c; }
+  .seat-count.over { background: #fce4ec; color: #c62828; }
+
+  .guest-list {
+    padding: 10px 12px 12px;
+    min-height: 60px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: flex-start;
+  }
+
+  .guest-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px 4px 6px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-family: sans-serif;
+    cursor: grab;
+    user-select: none;
+    border: 1px solid rgba(0,0,0,0.08);
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  }
+  .guest-chip:active { cursor: grabbing; }
+  .guest-chip.dragging { opacity: 0.4; transform: scale(0.95); }
+  .guest-chip.search-match { box-shadow: 0 0 0 2px #d4aaaa; z-index: 1; }
+  .guest-chip.search-dim { opacity: 0.25; }
+  .guest-chip.drop-before { border-left: 3px solid #d4aaaa; margin-left: -2px; }
+  .guest-chip.drop-after  { border-right: 3px solid #d4aaaa; }
+  .guest-chip .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .guest-chip .chip-name { line-height: 1.2; }
+  .guest-chip .edit-btn {
+    display: none;
+    margin-left: 3px;
+    font-size: 0.65rem;
+    opacity: 0.5;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .guest-chip:hover .edit-btn { display: inline; }
+  .guest-chip:hover { cursor: grab; }
+
+  /* Inline edit input */
+  .chip-edit-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.78rem;
+    font-family: sans-serif;
+    width: 120px;
+    color: inherit;
+    padding: 0;
+  }
+
+  /* Table colour palette */
+  .tc-0  { background: #6e4c7e; }
+  .tc-1  { background: #3b6ea5; }
+  .tc-2  { background: #2e7d6b; }
+  .tc-3  { background: #8b4513; }
+  .tc-4  { background: #b5651d; }
+  .tc-5  { background: #c0392b; }
+  .tc-6  { background: #16a085; }
+  .tc-7  { background: #7d6608; }
+  .tc-8  { background: #1a5276; }
+  .tc-9  { background: #6c3483; }
+
+  /* Chip bg tints */
+  .bg-0  { background: #f3edf7; color: #4a2060; }
+  .bg-1  { background: #e8f0f8; color: #1d4068; }
+  .bg-2  { background: #e6f4f0; color: #1a4d3e; }
+  .bg-3  { background: #f7ede6; color: #5c2d0e; }
+  .bg-4  { background: #fdf0e6; color: #7a3d0e; }
+  .bg-5  { background: #fce8e6; color: #7b1818; }
+  .bg-6  { background: #e0f4f0; color: #0d5c4a; }
+  .bg-7  { background: #f7f0dc; color: #504200; }
+  .bg-8  { background: #e3eef7; color: #0e3355; }
+  .bg-9  { background: #f5edfb; color: #451b70; }
+
+  .dot-0  { background: #6e4c7e; }
+  .dot-1  { background: #3b6ea5; }
+  .dot-2  { background: #2e7d6b; }
+  .dot-3  { background: #8b4513; }
+  .dot-4  { background: #b5651d; }
+  .dot-5  { background: #c0392b; }
+  .dot-6  { background: #16a085; }
+  .dot-7  { background: #7d6608; }
+  .dot-8  { background: #1a5276; }
+  .dot-9  { background: #6c3483; }
+
+  .group-divider {
+    width: 100%;
+    height: 1px;
+    background: rgba(0,0,0,0.06);
+    margin: 4px 0;
+  }
+
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1a1212;
+    color: #fdf5f5;
+    padding: 10px 22px;
+    border-radius: 24px;
+    font-family: sans-serif;
+    font-size: 0.85rem;
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    pointer-events: none;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media print {
+    .toolbar, .drag-hint, .add-guest-bar, #toast { display: none; }
+    body { background: white; }
+    .room { gap: 16px; padding: 16px; }
+    .table-card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="index.html"><img src="logo.png" alt="Smart of Sorts"></a>
+  <p>Gentlemen's Serenade &nbsp;·&nbsp; Interactive Seating Chart &nbsp;·&nbsp; 79 Guests &nbsp;·&nbsp; 10 Tables</p>
+</header>
+
+<div class="toolbar">
+  <label for="searchInput">🔍 Find guest:</label>
+  <input type="text" id="searchInput" placeholder="Type a name…" oninput="filterGuests(this.value)">
+  <div class="stats">
+    <div class="stat"><strong id="totalCount">79</strong> Guests</div>
+    <div class="stat"><strong>10</strong> Tables</div>
+    <div class="stat"><strong id="avgCount">7.8</strong> Avg/Table</div>
+  </div>
+</div>
+<div class="drag-hint">💡 Drag any guest chip to a different table to reassign seats. Changes are saved automatically.</div>
+
+<div class="add-guest-bar">
+  <label>➕ Add guest:</label>
+  <input type="text" id="newGuestName" placeholder="Full name…" onkeydown="if(event.key==='Enter') addGuest()">
+  <select id="newGuestTable"></select>
+  <button onclick="addGuest()">Add to Chart</button>
+  <span style="flex:1"></span>
+  <span class="save-indicator" id="saveIndicator"></span>
+  <button class="secondary" onclick="exportLayout()">⬇ Export</button>
+  <button class="secondary" onclick="resetLayout()">↺ Reset to Original</button>
+</div>
+
+<div class="room" id="room"></div>
+<div id="toast"></div>
+
+<script>
+const TABLES = [
+  {
+    id: 1, name: "Table 1 — Committee · Algrim · Eckles", subtitle: "Committee & Algrim + Eckles Family",
+    groups: [
+      { label: "Committee", guests: ["Kim Aliber","Vicky Leonard"] },
+      { label: "Algrim + Eckles Family", guests: [
+        "Ellen Algrim","Henry Algrim","Eric Algrim","Jane Druten",
+        "Emily Eckles","Johnny Eckles","Cheryl Eckles"
+      ]}
+    ]
+  },
+  {
+    id: 2, name: "Table 2 — Boyle · Anderson · Bubb", subtitle: "Boyle, Anderson, Komenda & Bubb Families",
+    groups: [
+      { label: "Boyle Family", guests: ["Lynne Boyle","Brennan Boyle"] },
+      { label: "Anderson + Komenda Family", guests: [
+        "Annie Anderson","Paula Brooks","Fletcher Anderson","Jocelyn Shelton"
+      ]},
+      { label: "Bubb Family", guests: ["Brenda Bubb","Stephen Bubb","Susan Bubb"] }
+    ]
+  },
+  {
+    id: 3, name: "Table 3 — Curtis · Schoenfeld · Dunn", subtitle: "Curtis + Schoenfeld & Dunn Families",
+    groups: [
+      { label: "Curtis + Schoenfeld Family", guests: [
+        "Stacy Curtis","Wylie Curtis","Marcia Schoenfeld",
+        "Christy Schoenfeld","Stephen Schoenfeld","Charlotte Mehrer"
+      ]},
+      { label: "Dunn Family", guests: ["Tracy Gordon","Alexander Dunn"] }
+    ]
+  },
+  {
+    id: 4, name: "Table 4 — Garrison · Holewinski · King", subtitle: "Garrison, Holewinski & King Families",
+    groups: [
+      { label: "Garrison Family", guests: ["Lora Garrison","Ash Garrison","Violetta (Vee) Garrison"] },
+      { label: "Holewinski Family", guests: ["Amy Holewinski","Ben Holewinski"] },
+      { label: "King Family", guests: ["Buffy King","Bobby King","Jane King"] }
+    ]
+  },
+  {
+    id: 5, name: "Table 5 — Komenda · Lambert · McKee", subtitle: "Komenda, Lambert & McKee Families",
+    groups: [
+      { label: "Anderson + Komenda Family", guests: ["Katie Komenda","Colin Komenda","Sam Komenda"] },
+      { label: "Lambert Family", guests: ["Kelly Lambert","Jack Lambert","Susan Leachman"] },
+      { label: "McKee Family", guests: ["Kelly McKee","Ike McKee","Sheila Eikermann"] }
+    ]
+  },
+  {
+    id: 6, name: "Table 6 — Nottberg · Mihalovich · Mos", subtitle: "Nottberg, Mihalovich & Mos Families",
+    groups: [
+      { label: "Nottberg Family", guests: ["Leigh Nottberg","Andrew Nottberg","Pat Pearce","Linda Endecott"] },
+      { label: "Mihalovich Family", guests: ["Holly Mihalovich","Charlie Mihalovich","Cheryl Spear"] },
+      { label: "Mos Family", guests: ["Erin Mos","Damon Mos","Marty Mos"] }
+    ]
+  },
+  {
+    id: 7, name: "Table 7 — Reintjes · O'Farrell · Patterson", subtitle: "Reintjes, O'Farrell & Patterson Families",
+    groups: [
+      { label: "Reintjes Family", guests: ["Jen Reintjes","Sam Reintjes"] },
+      { label: "O'Farrell Family", guests: ["Courtney O'Farrell","John O'Farrell","Donna Slaughter"] },
+      { label: "Patterson Family", guests: ["Carrie Patterson","Dean Patterson","Janet Gravette"] }
+    ]
+  },
+  {
+    id: 8, name: "Table 8 — Reuter · Sands · Sowden", subtitle: "Reuter, Sands & Sowden Families",
+    groups: [
+      { label: "Reuter Family", guests: ["Lainie Reuter","Blake Reuter"] },
+      { label: "Sands Family", guests: ["Lindy Sands","Bunker Sands","Melynda Sutherland"] },
+      { label: "Sowden Family", guests: ["Lindsay Sowden","Joe Sowden","Judy Barlow"] }
+    ]
+  },
+  {
+    id: 9, name: "Table 9 — Youssi · Thompson · Committee", subtitle: "Youssi, Thompson Families & Committee",
+    groups: [
+      { label: "Youssi Family", guests: ["Tricia Youssi","Colgin Youssi","Margie Weber"] },
+      { label: "Thompson Family", guests: ["Kristina Thompson","Peter Thompson"] },
+      { label: "Committee", guests: ["Luci Powell","Laura Moore","Christina Hogan"] }
+    ]
+  },
+  {
+    id: 10, name: "Table 10", subtitle: "Committee & Additional Guests",
+    groups: [
+      { label: "Committee", guests: ["Dan Bolen"] },
+      { label: "New Guests", guests: ["Matt Bleakley"] }
+    ]
+  }
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'gentlemens_serenade_seating';
+
+const guestMap = {};
+TABLES.forEach(t => t.groups.forEach(g => g.guests.forEach(n => { guestMap[n] = t.id; })));
+
+const tableData = {};
+TABLES.forEach(t => {
+  const guests = [];
+  t.groups.forEach(g => g.guests.forEach(n => guests.push({ name: n, group: g.label })));
+  tableData[t.id] = { name: t.name, subtitle: t.subtitle, guests };
+});
+
+// Load saved layout if it exists
+function loadSaved() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const data = JSON.parse(saved);
+    // Restore guest positions
+    Object.keys(tableData).forEach(id => { tableData[id].guests = []; });
+    Object.keys(guestMap).forEach(k => delete guestMap[k]);
+    data.forEach(({ tableId, name, group }) => {
+      if (tableData[tableId]) {
+        tableData[tableId].guests.push({ name, group });
+        guestMap[name] = tableId;
+      }
+    });
+  } catch(e) { /* ignore bad data */ }
+}
+
+function saveLayout() {
+  const flat = [];
+  Object.values(tableData).forEach(td => {
+    td.guests.forEach(g => flat.push({ tableId: Object.keys(tableData).find(id => tableData[id] === td), name: g.name, group: g.group }));
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(flat));
+  const el = document.getElementById('saveIndicator');
+  if (el) { el.textContent = '✓ Saved'; setTimeout(() => { el.textContent = ''; }, 2000); }
+}
+
+function exportLayout() {
+  const flat = [];
+  Object.entries(tableData).forEach(([id, td]) => {
+    td.guests.forEach(g => flat.push({ tableId: parseInt(id), tableName: td.name, name: g.name, group: g.group }));
+  });
+  const blob = new Blob([JSON.stringify(flat, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'seating-layout.json';
+  a.click();
+}
+
+function resetLayout() {
+  if (!confirm('Reset to original seating? This will undo all your changes.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+let dragGuest = null, dragFromTable = null;
+
+loadSaved();
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function render() {
+  const room = document.getElementById('room');
+  room.innerHTML = '';
+
+  TABLES.forEach((t, idx) => {
+    const ci = idx % 10;
+    const td = tableData[t.id];
+    const count = td.guests.length;
+    const countClass = count === 9 ? 'full' : count > 9 ? 'over' : '';
+
+    const card = document.createElement('div');
+    card.className = 'table-card';
+    card.dataset.tableId = t.id;
+
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="table-circle tc-${ci}">${t.id}</div>
+        <div class="card-title">
+          <h3><span class="table-name-text">${td.name}</span><span class="table-edit-btn" title="Edit table name">✏️</span></h3>
+          <div class="subtitle">${td.subtitle}</div>
+        </div>
+        <span class="seat-count ${countClass}">${count} seats</span>
+      </div>
+      <div class="guest-list" data-table-id="${t.id}"></div>
+    `;
+
+    // Table name editing
+    const nameText = card.querySelector('.table-name-text');
+    const editBtn  = card.querySelector('.table-edit-btn');
+    const startTableEdit = () => {
+      const current = td.name;
+      const input = document.createElement('input');
+      input.type = 'text'; input.className = 'table-name-input'; input.value = current;
+      nameText.replaceWith(input); editBtn.style.display = 'none';
+      input.focus(); input.select();
+      const save = () => {
+        const val = input.value.trim() || current;
+        td.name = val;
+        saveLayout();
+        render();
+      };
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { input.value = current; save(); } });
+      input.addEventListener('blur', save);
+    };
+    editBtn.addEventListener('click', startTableEdit);
+    nameText.addEventListener('dblclick', startTableEdit);
+
+    const list = card.querySelector('.guest-list');
+    const grouped = {}, order = [];
+    td.guests.forEach(g => {
+      if (!grouped[g.group]) { grouped[g.group] = []; order.push(g.group); }
+      grouped[g.group].push(g.name);
+    });
+
+    order.forEach((grp, gi) => {
+      if (gi > 0) {
+        const div = document.createElement('div');
+        div.className = 'group-divider';
+        list.appendChild(div);
+      }
+      grouped[grp].forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = `guest-chip bg-${ci}`;
+        chip.dataset.guest = name;
+        chip.dataset.tableId = t.id;
+        chip.draggable = true;
+        chip.innerHTML = `<span class="chip-dot dot-${ci}"></span><span class="chip-name">${name}</span><span class="edit-btn" title="Edit name">✏️</span>`;
+        chip.addEventListener('dragstart', onDragStart);
+        chip.addEventListener('dragend', onDragEnd);
+        chip.addEventListener('dragover', onChipDragOver);
+        chip.addEventListener('dragleave', onChipDragLeave);
+        chip.addEventListener('drop', onChipDrop);
+        chip.querySelector('.edit-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          startEdit(chip, t.id);
+        });
+        list.appendChild(chip);
+      });
+    });
+
+    list.addEventListener('dragover', onDragOver);
+    list.addEventListener('dragleave', onDragLeave);
+    list.addEventListener('drop', onDrop);
+    room.appendChild(card);
+  });
+
+  updateStats();
+}
+
+// ── DRAG ───────────────────────────────────────────────────────────────────
+function onDragStart(e) {
+  dragGuest = e.currentTarget.dataset.guest;
+  dragFromTable = parseInt(e.currentTarget.dataset.tableId);
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.table-card').forEach(c => c.classList.remove('drag-over'));
+  document.querySelectorAll('.guest-chip').forEach(c => c.classList.remove('drop-before','drop-after'));
+}
+function onDragOver(e) {
+  e.preventDefault();
+  const card = e.currentTarget.closest('.table-card');
+  if (!card) return;
+  const toId = parseInt(card.dataset.tableId);
+  if (toId !== dragFromTable) card.classList.add('drag-over');
+}
+function onDragLeave(e) {
+  const card = e.currentTarget.closest('.table-card');
+  if (card && !card.contains(e.relatedTarget)) card.classList.remove('drag-over');
+}
+function onDrop(e) {
+  e.preventDefault();
+  const card = e.currentTarget.closest('.table-card');
+  if (!card) return;
+  card.classList.remove('drag-over');
+  const toId = parseInt(card.dataset.tableId);
+  if (!dragGuest || toId === dragFromTable) return;
+  const from = tableData[dragFromTable], to = tableData[toId];
+  const i = from.guests.findIndex(g => g.name === dragGuest);
+  if (i === -1) return;
+  to.guests.push(from.guests.splice(i, 1)[0]);
+  guestMap[dragGuest] = toId;
+  showToast(`${dragGuest} moved to ${to.name.split('—')[0].trim()}`);
+  saveLayout();
+  render();
+  dragGuest = null; dragFromTable = null;
+}
+
+// ── CHIP-LEVEL DRAG (within-table reorder) ─────────────────────────────────
+function onChipDragOver(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const targetChip = e.currentTarget;
+  const targetTableId = parseInt(targetChip.dataset.tableId);
+  if (targetTableId !== dragFromTable) return; // let list handle cross-table
+  document.querySelectorAll('.guest-chip').forEach(c => c.classList.remove('drop-before','drop-after'));
+  const rect = targetChip.getBoundingClientRect();
+  const mid  = rect.left + rect.width / 2;
+  targetChip.classList.add(e.clientX < mid ? 'drop-before' : 'drop-after');
+}
+function onChipDragLeave(e) {
+  e.currentTarget.classList.remove('drop-before','drop-after');
+}
+function onChipDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const targetChip  = e.currentTarget;
+  const targetName  = targetChip.dataset.guest;
+  const targetTableId = parseInt(targetChip.dataset.tableId);
+  targetChip.classList.remove('drop-before','drop-after');
+  if (!dragGuest || dragGuest === targetName) { dragGuest = null; dragFromTable = null; return; }
+  if (targetTableId !== dragFromTable) {
+    // Cross-table drop on a chip — move to that table
+    const from = tableData[dragFromTable], to = tableData[targetTableId];
+    const i = from.guests.findIndex(g => g.name === dragGuest);
+    if (i === -1) { dragGuest = null; dragFromTable = null; return; }
+    const [moved] = from.guests.splice(i, 1);
+    const j = to.guests.findIndex(g => g.name === targetName);
+    const rect = targetChip.getBoundingClientRect();
+    to.guests.splice(e.clientX < rect.left + rect.width / 2 ? j : j + 1, 0, moved);
+    guestMap[dragGuest] = targetTableId;
+    showToast(`${dragGuest} moved to ${to.name.split('—')[0].trim()}`);
+  } else {
+    // Same-table reorder
+    const guests = tableData[dragFromTable].guests;
+    const fromIdx = guests.findIndex(g => g.name === dragGuest);
+    const toIdx   = guests.findIndex(g => g.name === targetName);
+    if (fromIdx === -1 || toIdx === -1) { dragGuest = null; dragFromTable = null; return; }
+    const [moved] = guests.splice(fromIdx, 1);
+    const rect = targetChip.getBoundingClientRect();
+    const insertAt = e.clientX < rect.left + rect.width / 2 ? toIdx : toIdx + 1;
+    guests.splice(insertAt > fromIdx ? insertAt - 1 : insertAt, 0, moved);
+    showToast(`${dragGuest} repositioned`);
+  }
+  saveLayout();
+  render();
+  dragGuest = null; dragFromTable = null;
+}
+
+// ── EDIT GUEST NAME ────────────────────────────────────────────────────────
+function startEdit(chip, tableId) {
+  const oldName = chip.dataset.guest;
+  const nameSpan = chip.querySelector('.chip-name');
+  chip.draggable = false;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'chip-edit-input';
+  input.value = oldName;
+  nameSpan.replaceWith(input);
+  chip.querySelector('.edit-btn').style.display = 'none';
+  input.focus();
+  input.select();
+
+  function save() {
+    const newName = input.value.trim();
+    if (newName && newName !== oldName) {
+      // Update tableData
+      const td = tableData[tableId];
+      const guest = td.guests.find(g => g.name === oldName);
+      if (guest) guest.name = newName;
+      // Update guestMap
+      delete guestMap[oldName];
+      guestMap[newName] = tableId;
+      showToast(`Renamed "${oldName}" → "${newName}"`);
+      saveLayout();
+      render();
+    } else {
+      // Cancel — restore original name
+      const span = document.createElement('span');
+      span.className = 'chip-name';
+      span.textContent = oldName;
+      input.replaceWith(span);
+      chip.querySelector('.edit-btn').style.display = '';
+      chip.draggable = true;
+    }
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') {
+      input.value = oldName;
+      save();
+    }
+  });
+  input.addEventListener('blur', save);
+}
+
+// ── ADD GUEST ──────────────────────────────────────────────────────────────
+function populateTableDropdown() {
+  const sel = document.getElementById('newGuestTable');
+  sel.innerHTML = '';
+  TABLES.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    if (t.id === 10) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function addGuest() {
+  const nameInput = document.getElementById('newGuestName');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  if (guestMap[name] !== undefined) { showToast(`"${name}" is already on the chart`); return; }
+  const tableId = parseInt(document.getElementById('newGuestTable').value);
+  tableData[tableId].guests.push({ name, group: 'New Guests' });
+  guestMap[name] = tableId;
+  nameInput.value = '';
+  nameInput.focus();
+  showToast(`${name} added to ${tableData[tableId].name}`);
+  saveLayout();
+  render();
+}
+
+// ── SEARCH ─────────────────────────────────────────────────────────────────
+function filterGuests(query) {
+  const q = query.toLowerCase().trim();
+  document.querySelectorAll('.guest-chip').forEach(chip => {
+    const n = chip.dataset.guest.toLowerCase();
+    chip.classList.toggle('search-match', q && n.includes(q));
+    chip.classList.toggle('search-dim',   q && !n.includes(q));
+  });
+  document.querySelectorAll('.table-card').forEach(card => {
+    const any = [...card.querySelectorAll('.guest-chip')].some(c => c.classList.contains('search-match'));
+    card.classList.toggle('highlight', q && any);
+  });
+  if (!q) document.querySelectorAll('.table-card').forEach(c => c.classList.remove('highlight'));
+}
+
+// ── STATS ──────────────────────────────────────────────────────────────────
+function updateStats() {
+  const total = Object.keys(guestMap).length;
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('avgCount').textContent = (total / 10).toFixed(1);
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+populateTableDropdown();
+render();
+</script>
+</body>
+</html>
