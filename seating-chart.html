@@ -128,6 +128,46 @@
     margin-left: 4px;
   }
 
+  /* ── TABS ── */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    background: #fff;
+    border-bottom: 2px solid #e8cccc;
+    padding: 0 24px;
+  }
+  .tab-btn {
+    padding: 12px 28px;
+    font-family: sans-serif;
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #a88888;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .tab-btn:hover { color: #1a1212; }
+  .tab-btn.active { color: #1a1212; border-bottom-color: #1a1212; font-weight: 600; }
+  .tab-btn .tab-count {
+    display: inline-block;
+    background: #f5e4e4;
+    color: #6b4848;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    margin-left: 7px;
+    vertical-align: middle;
+  }
+  .tab-btn.active .tab-count { background: #1a1212; color: #fdf5f5; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
   .room {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
@@ -135,6 +175,71 @@
     padding: 24px;
     max-width: 1400px;
     margin: 0 auto;
+  }
+
+  /* ── NOS PANEL ── */
+  .nos-panel {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .nos-intro {
+    font-family: sans-serif;
+    font-size: 0.82rem;
+    color: #a88888;
+    margin-bottom: 20px;
+    font-style: italic;
+  }
+  .nos-drop-zone {
+    min-height: 160px;
+    border: 2px dashed #e8cccc;
+    border-radius: 8px;
+    background: #fff;
+    padding: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .nos-drop-zone.drag-over {
+    border-color: #d4aaaa;
+    background: #fdf5f5;
+  }
+  .nos-empty {
+    width: 100%;
+    text-align: center;
+    padding: 40px 0;
+    font-family: sans-serif;
+    font-size: 0.85rem;
+    color: #d4aaaa;
+    font-style: italic;
+    pointer-events: none;
+  }
+  .nos-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 5px 8px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-family: sans-serif;
+    background: #f5e4e4;
+    color: #6b4848;
+    border: 1px solid #e8cccc;
+    cursor: grab;
+    user-select: none;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .nos-chip:active { cursor: grabbing; }
+  .nos-chip.dragging { opacity: 0.4; transform: scale(0.95); }
+  .nos-chip .chip-dot { width: 7px; height: 7px; border-radius: 50%; background: #d4aaaa; flex-shrink: 0; }
+  .nos-restore-hint {
+    font-family: sans-serif;
+    font-size: 0.72rem;
+    color: #a88888;
+    margin-top: 14px;
+    font-style: italic;
   }
 
   .table-card {
@@ -332,7 +437,7 @@
 
 <header>
   <a href="index.html"><img src="logo.png" alt="Smart of Sorts"></a>
-  <p>Gentlemen's Serenade &nbsp;·&nbsp; Interactive Seating Chart &nbsp;·&nbsp; 79 Guests &nbsp;·&nbsp; 10 Tables</p>
+  <p>Gentlemen's Serenade &nbsp;·&nbsp; Interactive Seating Chart &nbsp;·&nbsp; 79 Guests &nbsp;·&nbsp; 11 Tables</p>
 </header>
 
 <div class="toolbar">
@@ -357,7 +462,29 @@
   <button class="secondary" onclick="resetLayout()">↺ Reset to Original</button>
 </div>
 
-<div class="room" id="room"></div>
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('chart', this)">
+    Seating Chart <span class="tab-count" id="chartCount">79</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('nos', this)">
+    No's <span class="tab-count" id="nosCount">0</span>
+  </button>
+</div>
+
+<div class="tab-panel active" id="tab-chart">
+  <div class="room" id="room"></div>
+</div>
+
+<div class="tab-panel" id="tab-nos">
+  <div class="nos-panel">
+    <p class="nos-intro">Drag any guest here who has declined. Drag them back to the Seating Chart tab to reinstate them.</p>
+    <div class="nos-drop-zone" id="nosZone">
+      <div class="nos-empty" id="nosEmpty">No declines yet — drag guests here as needed</div>
+    </div>
+    <p class="nos-restore-hint">💡 To move someone back, drag their chip to the Seating Chart tab, then drop them onto a table.</p>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -446,6 +573,10 @@ const TABLES = [
       { label: "Committee", guests: ["Dan Bolen"] },
       { label: "New Guests", guests: ["Matt Bleakley"] }
     ]
+  },
+  {
+    id: 11, name: "Table 11", subtitle: "Available — drag guests here or add new",
+    groups: []
   }
 ];
 
@@ -631,7 +762,21 @@ function onDrop(e) {
   if (!card) return;
   card.classList.remove('drag-over');
   const toId = parseInt(card.dataset.tableId);
-  if (!dragGuest || toId === dragFromTable) return;
+  if (!dragGuest) return;
+
+  // Coming from No's tab back to a table
+  if (dragFromTable === null && dragNosGuest) {
+    const to = tableData[toId];
+    nosGuests = nosGuests.filter(g => g.name !== dragNosGuest.name);
+    to.guests.push({ name: dragNosGuest.name, group: dragNosGuest.group });
+    guestMap[dragNosGuest.name] = toId;
+    showToast(`${dragNosGuest.name} restored to ${to.name.split('—')[0].trim()}`);
+    dragGuest = null; dragFromTable = null; dragNosGuest = null;
+    saveLayout(); render(); renderNos();
+    return;
+  }
+
+  if (toId === dragFromTable) return;
   const from = tableData[dragFromTable], to = tableData[toId];
   const i = from.guests.findIndex(g => g.name === dragGuest);
   if (i === -1) return;
@@ -786,11 +931,89 @@ function filterGuests(query) {
   if (!q) document.querySelectorAll('.table-card').forEach(c => c.classList.remove('highlight'));
 }
 
+// ── TABS ───────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── NO'S ───────────────────────────────────────────────────────────────────
+// nosGuests: array of { name, group, fromTableId }
+let nosGuests = [];
+let dragNosGuest = null;
+
+function renderNos() {
+  const zone = document.getElementById('nosZone');
+  const empty = document.getElementById('nosEmpty');
+  // Remove old chips
+  zone.querySelectorAll('.nos-chip').forEach(c => c.remove());
+  empty.style.display = nosGuests.length === 0 ? 'block' : 'none';
+
+  nosGuests.forEach(g => {
+    const chip = document.createElement('div');
+    chip.className = 'nos-chip';
+    chip.dataset.guest = g.name;
+    chip.draggable = true;
+    chip.innerHTML = `<span class="chip-dot"></span>${g.name}`;
+    chip.addEventListener('dragstart', e => {
+      dragNosGuest = g;
+      dragGuest = g.name;
+      dragFromTable = null; // signal: coming from nos
+      setTimeout(() => chip.classList.add('dragging'), 0);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    chip.addEventListener('dragend', () => {
+      chip.classList.remove('dragging');
+      document.querySelectorAll('.table-card').forEach(c => c.classList.remove('drag-over'));
+    });
+    zone.appendChild(chip);
+  });
+
+  // Update tab count badge
+  document.getElementById('nosCount').textContent = nosGuests.length;
+  document.getElementById('chartCount').textContent = Object.keys(guestMap).length;
+}
+
+// Allow dropping nos chips onto table cards
+function setupNosDrop() {
+  const zone = document.getElementById('nosZone');
+  zone.addEventListener('dragover', e => {
+    if (dragFromTable !== null) { // coming from a table
+      e.preventDefault();
+      zone.classList.add('drag-over');
+    }
+  });
+  zone.addEventListener('dragleave', e => {
+    if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+  });
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (dragFromTable === null || !dragGuest) return; // only accept from tables
+    // Remove from table
+    const from = tableData[dragFromTable];
+    const idx = from.guests.findIndex(g => g.name === dragGuest);
+    if (idx === -1) return;
+    const [moved] = from.guests.splice(idx, 1);
+    delete guestMap[dragGuest];
+    nosGuests.push({ name: moved.name, group: moved.group, fromTableId: dragFromTable });
+    showToast(`${dragGuest} moved to No's`);
+    dragGuest = null; dragFromTable = null;
+    saveLayout();
+    render();
+    renderNos();
+  });
+}
+
 // ── STATS ──────────────────────────────────────────────────────────────────
 function updateStats() {
   const total = Object.keys(guestMap).length;
   document.getElementById('totalCount').textContent = total;
-  document.getElementById('avgCount').textContent = (total / 10).toFixed(1);
+  document.getElementById('avgCount').textContent = (total / 11).toFixed(1);
+  document.getElementById('chartCount').textContent = total;
+  document.getElementById('nosCount').textContent = nosGuests.length;
 }
 
 // ── TOAST ──────────────────────────────────────────────────────────────────
@@ -806,6 +1029,8 @@ function showToast(msg) {
 // ── INIT ───────────────────────────────────────────────────────────────────
 populateTableDropdown();
 render();
+setupNosDrop();
+renderNos();
 </script>
 </body>
 </html>
