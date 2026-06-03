@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gentlemen's Serenade — Seating Chart</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -295,12 +296,7 @@
     flex-shrink: 0; line-height: 1; transition: opacity 0.15s;
   }
   .card-header:hover .table-edit-btn { opacity: 0.45; }
-  .card-title .subtitle {
-    font-size: 0.72rem;
-    color: #a88888;
-    font-family: sans-serif;
-    font-style: italic;
-  }
+  .card-title .subtitle { display: none; }
   .seat-count {
     font-family: sans-serif;
     font-size: 0.8rem;
@@ -458,7 +454,8 @@
   <button onclick="addGuest()">Add to Chart</button>
   <span style="flex:1"></span>
   <span class="save-indicator" id="saveIndicator"></span>
-  <button class="secondary" onclick="exportLayout()">⬇ Export</button>
+  <button class="secondary" onclick="exportJSON()">⬇ Export JSON</button>
+  <button class="secondary" onclick="exportExcel()">⬇ Export Excel</button>
   <button class="secondary" onclick="resetLayout()">↺ Reset to Original</button>
 </div>
 
@@ -490,7 +487,7 @@
 <script>
 const TABLES = [
   {
-    id: 1, name: "Table 1 — Committee · Algrim · Eckles", subtitle: "Committee & Algrim + Eckles Family",
+    id: 1, name: "Table 1 — Committee · Algrim · Eckles", subtitle: "",
     groups: [
       { label: "Committee", guests: ["Kim Aliber","Vicky Leonard"] },
       { label: "Algrim + Eckles Family", guests: [
@@ -500,7 +497,7 @@ const TABLES = [
     ]
   },
   {
-    id: 2, name: "Table 2 — Boyle · Anderson · Bubb", subtitle: "Boyle, Anderson, Komenda & Bubb Families",
+    id: 2, name: "Table 2 — Boyle · Anderson · Bubb", subtitle: "",
     groups: [
       { label: "Boyle Family", guests: ["Lynne Boyle","Brennan Boyle"] },
       { label: "Anderson + Komenda Family", guests: [
@@ -510,7 +507,7 @@ const TABLES = [
     ]
   },
   {
-    id: 3, name: "Table 3 — Curtis · Schoenfeld · Dunn", subtitle: "Curtis + Schoenfeld & Dunn Families",
+    id: 3, name: "Table 3 — Curtis · Schoenfeld · Dunn", subtitle: "",
     groups: [
       { label: "Curtis + Schoenfeld Family", guests: [
         "Stacy Curtis","Wylie Curtis","Marcia Schoenfeld",
@@ -520,7 +517,7 @@ const TABLES = [
     ]
   },
   {
-    id: 4, name: "Table 4 — Garrison · Holewinski · King", subtitle: "Garrison, Holewinski & King Families",
+    id: 4, name: "Table 4 — Garrison · Holewinski · King", subtitle: "",
     groups: [
       { label: "Garrison Family", guests: ["Lora Garrison","Ash Garrison","Violetta (Vee) Garrison"] },
       { label: "Holewinski Family", guests: ["Amy Holewinski","Ben Holewinski"] },
@@ -528,7 +525,7 @@ const TABLES = [
     ]
   },
   {
-    id: 5, name: "Table 5 — Komenda · Lambert · McKee", subtitle: "Komenda, Lambert & McKee Families",
+    id: 5, name: "Table 5 — Komenda · Lambert · McKee", subtitle: "",
     groups: [
       { label: "Anderson + Komenda Family", guests: ["Katie Komenda","Colin Komenda","Sam Komenda"] },
       { label: "Lambert Family", guests: ["Kelly Lambert","Jack Lambert","Susan Leachman"] },
@@ -536,47 +533,47 @@ const TABLES = [
     ]
   },
   {
-    id: 6, name: "Table 6 — Nottberg · Mihalovich · Mos", subtitle: "Nottberg, Mihalovich & Mos Families",
+    id: 6, name: "Table 6 — Nottberg · Mihalovich", subtitle: "",
     groups: [
       { label: "Nottberg Family", guests: ["Leigh Nottberg","Andrew Nottberg","Pat Pearce","Linda Endecott"] },
       { label: "Mihalovich Family", guests: ["Holly Mihalovich","Charlie Mihalovich","Cheryl Spear"] },
-      { label: "Mos Family", guests: ["Erin Mos","Damon Mos","Marty Mos"] }
-    ]
-  },
-  {
-    id: 7, name: "Table 7 — Reintjes · O'Farrell · Patterson", subtitle: "Reintjes, O'Farrell & Patterson Families",
-    groups: [
-      { label: "Reintjes Family", guests: ["Jen Reintjes","Sam Reintjes"] },
-      { label: "O'Farrell Family", guests: ["Courtney O'Farrell","John O'Farrell","Donna Slaughter"] },
-      { label: "Patterson Family", guests: ["Carrie Patterson","Dean Patterson","Janet Gravette"] }
-    ]
-  },
-  {
-    id: 8, name: "Table 8 — Reuter · Sands · Sowden", subtitle: "Reuter, Sands & Sowden Families",
-    groups: [
-      { label: "Reuter Family", guests: ["Lainie Reuter","Blake Reuter"] },
-      { label: "Sands Family", guests: ["Lindy Sands","Bunker Sands","Melynda Sutherland"] },
-      { label: "Sowden Family", guests: ["Lindsay Sowden","Joe Sowden","Judy Barlow"] }
-    ]
-  },
-  {
-    id: 9, name: "Table 9 — Youssi · Thompson · Committee", subtitle: "Youssi, Thompson Families & Committee",
-    groups: [
-      { label: "Youssi Family", guests: ["Tricia Youssi","Colgin Youssi","Margie Weber"] },
-      { label: "Thompson Family", guests: ["Kristina Thompson","Peter Thompson"] },
-      { label: "Committee", guests: ["Luci Powell","Laura Moore","Christina Hogan"] }
-    ]
-  },
-  {
-    id: 10, name: "Table 10", subtitle: "Committee & Additional Guests",
-    groups: [
-      { label: "Committee", guests: ["Dan Bolen"] },
       { label: "New Guests", guests: ["Matt Bleakley"] }
     ]
   },
   {
-    id: 11, name: "Table 11", subtitle: "Available — drag guests here or add new",
+    id: 7, name: "Table 7 — Mos · O'Farrell · Reintjes", subtitle: "",
+    groups: [
+      { label: "Mos Family", guests: ["Erin Mos","Damon Mos","Marty Mos"] },
+      { label: "O'Farrell Family", guests: ["Courtney O'Farrell","John O'Farrell","Donna Slaughter"] },
+      { label: "Reintjes Family", guests: ["Jen Reintjes","Sam Reintjes"] }
+    ]
+  },
+  {
+    id: 8, name: "Table 8 — Sands · Sowden · Youssi", subtitle: "",
+    groups: [
+      { label: "Sands Family", guests: ["Lindy Sands","Melynda Sutherland","Bunker Sands"] },
+      { label: "Sowden Family", guests: ["Lindsay Sowden","Joe Sowden","Judy Barlow"] },
+      { label: "Youssi Family", guests: ["Margie Weber","Tricia Youssi"] }
+    ]
+  },
+  {
+    id: 9, name: "Table 9 — Committee · Reuter · Thompson", subtitle: "",
+    groups: [
+      { label: "Thompson Family", guests: ["Kristina Thompson","Peter Thompson"] },
+      { label: "Reuter Family", guests: ["Lainie Reuter","Blake Reuter"] },
+      { label: "Committee", guests: ["Luci Powell","Laura Moore","Christina Hogan","Dan Bolen"] }
+    ]
+  },
+  {
+    id: 10, name: "Table 10 — Not Sitting", subtitle: "",
     groups: []
+  },
+  {
+    id: 11, name: "Table 11 — Not Coming", subtitle: "",
+    groups: [
+      { label: "Patterson Family", guests: ["Carrie Patterson","Dean Patterson","Janet Gravette"] },
+      { label: "Youssi Family", guests: ["Colgin Youssi"] }
+    ]
   }
 ];
 
@@ -621,7 +618,7 @@ function saveLayout() {
   if (el) { el.textContent = '✓ Saved'; setTimeout(() => { el.textContent = ''; }, 2000); }
 }
 
-function exportLayout() {
+function exportJSON() {
   const flat = [];
   Object.entries(tableData).forEach(([id, td]) => {
     td.guests.forEach(g => flat.push({ tableId: parseInt(id), tableName: td.name, name: g.name, group: g.group }));
@@ -631,6 +628,64 @@ function exportLayout() {
   a.href = URL.createObjectURL(blob);
   a.download = 'seating-layout.json';
   a.click();
+}
+
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // ── ALL GUESTS sheet ──────────────────────────────────────────────────
+  const allRows = [['Table #', 'Table Name', 'Guest Name', 'Family / Group']];
+  Object.entries(tableData).forEach(([id, td]) => {
+    td.guests.forEach((g, i) => {
+      allRows.push([
+        i === 0 ? parseInt(id) : '',
+        i === 0 ? td.name : '',
+        g.name,
+        g.group
+      ]);
+    });
+    allRows.push(['', '', '', '']); // spacer
+  });
+
+  const allWs = XLSX.utils.aoa_to_sheet(allRows);
+  allWs['!cols'] = [{ wch: 8 }, { wch: 36 }, { wch: 28 }, { wch: 28 }];
+
+  // Style header row
+  const headerStyle = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1A1212' } }, alignment: { horizontal: 'center' } };
+  ['A1','B1','C1','D1'].forEach(ref => {
+    if (allWs[ref]) allWs[ref].s = headerStyle;
+  });
+
+  XLSX.utils.book_append_sheet(wb, allWs, 'All Guests');
+
+  // ── Per-table sheets ──────────────────────────────────────────────────
+  Object.entries(tableData).forEach(([id, td]) => {
+    const rows = [
+      [td.name],
+      ['Guest Name', 'Family / Group'],
+      ...td.guests.map(g => [g.name, g.group]),
+      [`${td.guests.length} guests`, '']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 28 }, { wch: 28 }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+    if (ws['A1']) ws['A1'].s = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1A1212' } }, alignment: { horizontal: 'center' } };
+    if (ws['A2']) ws['A2'].s = { font: { bold: true }, fill: { fgColor: { rgb: 'EFD6D6' } } };
+    if (ws['B2']) ws['B2'].s = { font: { bold: true }, fill: { fgColor: { rgb: 'EFD6D6' } } };
+    const sheetName = `Table ${id}`.substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  // ── Nos sheet (if any) ────────────────────────────────────────────────
+  if (nosGuests.length > 0) {
+    const nosRows = [['Guest Name', 'Family / Group'], ...nosGuests.map(g => [g.name, g.group])];
+    const nosWs = XLSX.utils.aoa_to_sheet(nosRows);
+    nosWs['!cols'] = [{ wch: 28 }, { wch: 28 }];
+    XLSX.utils.book_append_sheet(wb, nosWs, "No's");
+  }
+
+  XLSX.writeFile(wb, 'Gentlemens-Serenade-Seating.xlsx');
+  showToast('Excel file downloaded!');
 }
 
 function resetLayout() {
